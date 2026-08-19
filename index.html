@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>RGB LYS</title>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
+
+  <style>
+
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+
+    .card {
+      width: 350px;
+      margin: auto;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    button {
+      padding: 12px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+    }
+
+    /* --------------------
+       COLOR PICKER
+       -------------------- */
+
+    #colorPicker {
+      width: 150px;
+      height: 100px;
+      border: none;
+      cursor: pointer;
+      background: none;
+    }
+
+    #selectedColor {
+      width: 100%;
+      height: 60px;
+      border-radius: 10px;
+      margin: 15px 0;
+      border: 1px solid #ccc;
+    }
+
+    /* --------------------
+       PALETTE
+       -------------------- */
+
+    .palette {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .colorButton {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 0 3px rgba(0,0,0,0.5);
+    }
+
+    .offButton {
+      background-color: black;
+      color: white;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <h1>RGB LYS</h1>
+
+  <div class="card">
+
+    <h2>
+      <i class="fas fa-lightbulb"></i>
+      LED
+    </h2>
+
+    <p>
+      Current color:
+      <strong id="LEDValue">OFF</strong>
+    </p>
+
+
+    <!-- --------------------
+         COLOR PICKER
+         -------------------- -->
+
+    <input
+      type="color"
+      id="colorPicker"
+      value="#ff0000"
+    />
+
+    <div
+      id="selectedColor"
+      style="background-color: #ff0000;"
+    ></div>
+
+
+    <button onclick="sendSelectedColor()">
+      🎨 Set Color
+    </button>
+
+
+    <!-- --------------------
+         QUICK PALETTE
+         -------------------- -->
+
+    <h3>Palette</h3>
+
+    <div class="palette">
+
+      <button
+        class="colorButton"
+        style="background:#ff0000"
+        onclick="setColor('#ff0000')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#ff8000"
+        onclick="setColor('#ff8000')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#ffff00"
+        onclick="setColor('#ffff00')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#00ff00"
+        onclick="setColor('#00ff00')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#00ffff"
+        onclick="setColor('#00ffff')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#0000ff"
+        onclick="setColor('#0000ff')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#8000ff"
+        onclick="setColor('#8000ff')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#ff00ff"
+        onclick="setColor('#ff00ff')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#ff0080"
+        onclick="setColor('#ff0080')">
+      </button>
+
+      <button
+        class="colorButton"
+        style="background:#ffffff"
+        onclick="setColor('#ffffff')">
+      </button>
+
+    </div>
+
+
+    <!-- --------------------
+         OFF
+         -------------------- -->
+
+    <button
+      class="offButton"
+      onclick="toggleLED('OFF')">
+      ⚫ OFF
+    </button>
+
+
+    <p id="status">Connecting...</p>
+
+  </div>
+
+
+  <script>
+
+    // --------------------
+    // MQTT
+    // --------------------
+
+    const broker =
+      "wss://broker.hivemq.com:8884/mqtt";
+
+    const client =
+      mqtt.connect(broker);
+
+    const LEDTopic =
+      "arduino/LEDControl";
+
+
+    // --------------------
+    // MQTT CONNECTED
+    // --------------------
+
+    client.on("connect", () => {
+
+      console.log(
+        "Connected to MQTT broker"
+      );
+
+      document.getElementById("status")
+        .textContent =
+        "MQTT Connected";
+
+      client.subscribe(
+        LEDTopic,
+        (error) => {
+
+          if (error) {
+
+            console.error(
+              "Subscribe error:",
+              error
+            );
+
+          } else {
+
+            console.log(
+              "Subscribed to:",
+              LEDTopic
+            );
+
+          }
+
+        }
+      );
+
+    });
+
+
+    // --------------------
+    // MQTT MESSAGE
+    // --------------------
+
+    client.on(
+      "message",
+      (topic, message) => {
+
+        const msg =
+          message.toString();
+
+        console.log(
+          "Received:",
+          topic,
+          msg
+        );
+
+        if (topic === LEDTopic) {
+
+          document.getElementById(
+            "LEDValue"
+          ).textContent = msg;
+
+        }
+
+      }
+    );
+
+
+    // --------------------
+    // COLOR PICKER
+    // --------------------
+
+    const colorPicker =
+      document.getElementById(
+        "colorPicker"
+      );
+
+    const selectedColor =
+      document.getElementById(
+        "selectedColor"
+      );
+
+
+    colorPicker.addEventListener(
+      "input",
+      () => {
+
+        selectedColor.style
+          .backgroundColor =
+          colorPicker.value;
+
+      }
+    );
+
+
+    // --------------------
+    // SEND SELECTED COLOR
+    // --------------------
+
+    function sendSelectedColor() {
+
+      const hex =
+        colorPicker.value;
+
+      sendColor(hex);
+
+    }
+
+
+    // --------------------
+    // SET PALETTE COLOR
+    // --------------------
+
+    function setColor(hex) {
+
+      colorPicker.value = hex;
+
+      selectedColor.style
+        .backgroundColor = hex;
+
+      sendColor(hex);
+
+    }
+
+
+    // --------------------
+    // HEX → RGB
+    // --------------------
+
+    function sendColor(hex) {
+
+      if (!client.connected) {
+
+        console.log(
+          "MQTT not connected!"
+        );
+
+        document.getElementById(
+          "status"
+        ).textContent =
+          "MQTT not connected!";
+
+        return;
+
+      }
+
+
+      const r =
+        parseInt(
+          hex.substring(1, 3),
+          16
+        );
+
+      const g =
+        parseInt(
+          hex.substring(3, 5),
+          16
+        );
+
+      const b =
+        parseInt(
+          hex.substring(5, 7),
+          16
+        );
+
+
+      const rgb =
+        `${r},${g},${b}`;
+
+
+      console.log(
+        "Sending RGB:",
+        rgb
+      );
+
+
+      client.publish(
+        LEDTopic,
+        rgb,
+        (error) => {
+
+          if (error) {
+
+            console.error(
+              "Publish failed:",
+              error
+            );
+
+          } else {
+
+            console.log(
+              "Published:",
+              rgb
+            );
+
+            document.getElementById(
+              "LEDValue"
+            ).textContent =
+              rgb;
+
+          }
+
+        }
+      );
+
+    }
+
+
+    // --------------------
+    // OFF
+    // --------------------
+
+    function toggleLED(state) {
+
+      if (!client.connected) {
+
+        console.log(
+          "MQTT not connected!"
+        );
+
+        return;
+
+      }
+
+
+      client.publish(
+        LEDTopic,
+        state
+      );
+
+
+      document.getElementById(
+        "LEDValue"
+      ).textContent =
+        state;
+
+    }
+
+
+    // --------------------
+    // MQTT ERROR
+    // --------------------
+
+    client.on(
+      "error",
+      (error) => {
+
+        console.error(
+          "MQTT Error:",
+          error
+        );
+
+        document.getElementById(
+          "status"
+        ).textContent =
+          "MQTT Error";
+
+      }
+    );
+
+
+    // --------------------
+    // MQTT DISCONNECTED
+    // --------------------
+
+    client.on(
+      "close",
+      () => {
+
+        console.log(
+          "MQTT connection closed"
+        );
+
+        document.getElementById(
+          "status"
+        ).textContent =
+          "MQTT disconnected";
+
+      }
+    );
+
+  </script>
+
+</body>
+</html>
